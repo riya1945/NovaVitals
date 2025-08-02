@@ -73,16 +73,12 @@ const initialFormData: FormFields = {
   len_weighted: 0,
   var_div_duration: 0,
   var_div_len: 0,
-
   sma: 0,
   ema: 0,
   energy: 0,
   crest_factor: 0,
   impulse_factor: 0,
 };
-
-console.log(featureOrder); // should show array of 18 float values
-
 const formatLabel = (key: string) =>
   key
     .replace(/_/g, " ")
@@ -133,9 +129,6 @@ export default function Home() {
                 </div>
               </nav>
       <form onSubmit={handleSubmit} className="space-y-12">
-       
-
-        {/* Statistical Parameters */}
         <div className="space-y-8">
           <h2 className="text-2xl font-semibold text-cyan-400 flex items-center gap-3 pb-4 border-b border-cyan-400/30">
             <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-sm">📊</div>
@@ -162,9 +155,7 @@ export default function Home() {
     </div>
   ))}
 </div>
-
         </div>
-
         <div className="flex justify-center">
           <button
             type="submit"
