@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from "@backend/SupabaseClient";
 
-
-
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
@@ -16,7 +14,7 @@ export default function Home() {
       if (!data.session) {
         router.push('/login');
       } else {
-        setUser(data.session.user.user_metadata); // fetch name if available
+        setUser(data.session.user.user_metadata); 
       }
     };
     checkSession();
@@ -33,25 +31,15 @@ export default function Home() {
           <div className="flex gap-4 items-center">
             <Link href="/" className="hover:underline">Home</Link>
             <Link href="/predict" className="hover:underline">Predict</Link>
-            {user && (
-              <button
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  router.push('/login');
-                }}
-                className="px-4 py-2 bg-red-500 rounded-lg text-white hover:bg-red-600 transition"
-              >
-                Logout
-              </button>
-            )}
+            <Link href="/history" className='hover:underline'>History</Link> 
           </div>
         </nav>
 
-        {user && (
-          <p className="text-white/80 text-sm mt-2">
+        {/* {user && (
+          <p className="text-white/80 text-xl mt-8">
             Welcome, {user.name || user.email}!
           </p>
-        )}
+        )} */}
 
         <section className="text-center py-24">
           <h1 className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-white via-cyan-400 to-blue-500 text-transparent bg-clip-text mb-6 animate-fadeInUp">

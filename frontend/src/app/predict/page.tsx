@@ -121,6 +121,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <div className="flex gap-4">
                   <Link href="/" className="hover:underline">Home</Link>
                   <Link href="/predict" className="hover:underline">Predict</Link>
+                  <Link href="/history" className='hover:underline'>History</Link>
                 </div>
               </nav>
       <form onSubmit={handleSubmit} className="space-y-12">
