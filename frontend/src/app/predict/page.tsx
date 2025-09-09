@@ -1,31 +1,12 @@
 "use client";
 import Link from 'next/link';
 import { useState } from "react";
+import { supabase } from "@backend/SupabaseClient";
+import { useUser } from "@supabase/auth-helpers-react"; 
+import { features } from 'process';
 
 type FormFields = {
-  duration: number;
-  length: number;
-  mean: number;
-  variance: number;
-  std: number;
-  kurtosis: number;
-  skew: number;
-  n_peaks: number;
-  smooth10_n_peaks: number;
-  smooth20_n_peaks: number;
-  diff_peaks: number;
-  diff2_peaks: number;
-  diff_var: number;
-  diff2_var: number;
-  gaps_squared: number;
-  len_weighted: number;
-  var_div_duration: number;
-  var_div_len: number;
-  sma: number;
-  ema: number;
-  energy: number;
-  crest_factor: number;
-  impulse_factor: number;
+  [key: string]: string; 
 };
 
 const featureOrder = [
@@ -55,29 +36,29 @@ const featureOrder = [
 ];
 
 const initialFormData: FormFields = {
-  duration: 0,
-  length: 0,
-  mean: 0,
-  variance: 0,
-  std: 0,
-  kurtosis: 0,
-  skew: 0,
-  n_peaks: 0,
-  smooth10_n_peaks: 0,
-  smooth20_n_peaks: 0,
-  diff_peaks: 0,
-  diff2_peaks: 0,
-  diff_var: 0,
-  diff2_var: 0,
-  gaps_squared: 0,
-  len_weighted: 0,
-  var_div_duration: 0,
-  var_div_len: 0,
-  sma: 0,
-  ema: 0,
-  energy: 0,
-  crest_factor: 0,
-  impulse_factor: 0,
+  duration: "",
+  length: "",
+  mean: "",
+  variance: "",
+  std: "",
+  kurtosis: "",
+  skew: "",
+  n_peaks: "",
+  smooth10_n_peaks: "",
+  smooth20_n_peaks: "",
+  diff_peaks: "",
+  diff2_peaks: "",
+  diff_var: "",
+  diff2_var: "",
+  gaps_squared: "",
+  len_weighted: "",
+  var_div_duration: "",
+  var_div_len: "",
+  sma: "",
+  ema: "",
+  energy: "",
+  crest_factor: "",
+  impulse_factor: "",
 };
 const formatLabel = (key: string) =>
   key
@@ -88,19 +69,21 @@ export default function Home() {
   const [formData, setFormData] = useState<FormFields>(initialFormData);
   const [prediction, setPrediction] = useState<string>("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value === "" ? 0 : parseFloat(value),
-    }));
-  };
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { name, value } = e.target;
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value, 
+  }));
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const inputArray = featureOrder.map((key) => formData[key as keyof FormFields]);
-
+    const features = Object.fromEntries(
+    Object.entries(formData).map(([k, v]) => [k, parseFloat(v)])
+  );
     const response = await fetch("http://127.0.0.1:8000/predict", {
       method: "POST",
       
@@ -112,6 +95,18 @@ export default function Home() {
 
     const data = await response.json();
     setPrediction(data.prediction);
+    const {error}=await supabase.from("health_readings").insert([{
+      ...features,
+      prediction:data.prediction
+    },
+    ]);
+    if(error){
+      console.log("Error saving the data",error);
+    }
+    else {
+    console.log("✅ Prediction saved to Supabase");
+  }
+
   };
 
   return (
