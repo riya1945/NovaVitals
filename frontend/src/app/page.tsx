@@ -34,13 +34,16 @@ export default function Login() {
       email,
       password,
       options: {
-        data: { name },
+        data: { name }, 
       },
     });
     setLoading(false);
 
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
     setMsg("You have signed up, check your email!");
-    
   };
 
   const handleLogin = async () => {
@@ -52,8 +55,12 @@ export default function Login() {
     });
     setLoading(false);
 
+    if (error) {
+      setMsg(error.message);
+      return; 
+    }
     setMsg("You are logged in!");
-    router.push("/home");
+    router.push("/home"); 
   };
 
   return (
@@ -123,13 +130,12 @@ export default function Login() {
               </button>
             ) : (
               <button
-  type="button"
-  onClick={() => setIsSignUp(true)}
-  className="text-cyan-400 hover:text-cyan-300 transition-colors duration-200"
->
-  Don&apos;t have an account? Sign up
-</button>
-
+                type="button"
+                onClick={() => setIsSignUp(true)}
+                className="text-cyan-400 hover:text-cyan-300 transition-colors duration-200"
+              >
+                Don't have an account? Sign up
+              </button>
             )}
           </p>
         </div>
