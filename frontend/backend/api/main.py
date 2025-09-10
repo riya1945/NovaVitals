@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
-
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  
 MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 FEATURE_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")

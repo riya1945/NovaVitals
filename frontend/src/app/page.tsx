@@ -34,18 +34,13 @@ export default function Login() {
       email,
       password,
       options: {
-        data: { name }, // ✅ store name in user_metadata
+        data: { name },
       },
     });
     setLoading(false);
 
-    if (error) {
-      setMsg(error.message);
-      return;
-    }
-
     setMsg("You have signed up, check your email!");
-    // Don’t redirect immediately → user must confirm email
+    
   };
 
   const handleLogin = async () => {
@@ -57,13 +52,8 @@ export default function Login() {
     });
     setLoading(false);
 
-    if (error) {
-      setMsg(error.message);
-      return; // ✅ stop here if login failed
-    }
-
     setMsg("You are logged in!");
-    router.push("/home"); // ✅ redirect after successful login
+    router.push("/home");
   };
 
   return (

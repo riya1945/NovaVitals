@@ -74,11 +74,7 @@ export default function Predict() {
       prediction: data.prediction,
     }]);
 
-    if (error) {
-      console.log("❌ Error saving the data", error);
-    } else {
-      console.log("✅ Prediction saved to Supabase");
-    }
+    
   };
 
   return (
