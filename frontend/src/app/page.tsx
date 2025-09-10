@@ -133,12 +133,13 @@ export default function Login() {
               </button>
             ) : (
               <button
-                type="button"
-                onClick={() => setIsSignUp(true)}
-                className="text-cyan-400 hover:text-cyan-300 transition-colors duration-200"
-              >
-                Don't have an account? Sign up
-              </button>
+  type="button"
+  onClick={() => setIsSignUp(true)}
+  className="text-cyan-400 hover:text-cyan-300 transition-colors duration-200"
+>
+  Don&apos;t have an account? Sign up
+</button>
+
             )}
           </p>
         </div>

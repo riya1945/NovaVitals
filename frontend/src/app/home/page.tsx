@@ -35,11 +35,11 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* {user && (
+        {user && (
           <p className="text-white/80 text-xl mt-8">
             Welcome, {user.name || user.email}!
           </p>
-        )} */}
+        )}
 
         <section className="text-center py-24">
           <h1 className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-white via-cyan-400 to-blue-500 text-transparent bg-clip-text mb-6 animate-fadeInUp">
