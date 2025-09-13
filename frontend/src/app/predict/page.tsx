@@ -53,29 +53,42 @@ export default function Predict() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const inputArray = featureOrder.map((key) => formData[key as keyof FormFields]);
+  try {
+    const inputArray = featureOrder.map(
+      (key) => formData[key as keyof FormFields]
+    );
     const features = Object.fromEntries(
       Object.entries(formData).map(([k, v]) => [k, parseFloat(v)])
     );
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ features: inputArray }),
-    });
-
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/predict`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ features: inputArray }),
+      }
+    );
     const data = await response.json();
     setPrediction(data.prediction);
+    const { error } = await supabase.from("health_readings").insert([
+      {
+        ...features,
+        prediction: data.prediction,
+      },
+    ]);
+    if (error) {
+      console.error("❌ Supabase insert failed:", error.message);
+    } else {
+      console.log("✅ Supabase insert successful");
+    }
+  } catch (err) {
+    console.error("❌ Prediction request failed:", err);
+  }
+};
 
-    const { error } = await supabase.from("health_readings").insert([{
-      ...features,
-      prediction: data.prediction,
-    }]);
-
-    
-  };
 
   return (
     <main className="min-h-screen bg-[#111827] text-white p-6 md:p-12 w-full">
