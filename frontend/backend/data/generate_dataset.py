@@ -3,7 +3,7 @@ import os
 from functools import reduce
 
 # Set path to your raw data folder
-data_dir = "backend/data"
+data_dir = os.path.dirname(os.path.abspath(__file__))
 channels = [f for f in os.listdir(data_dir) if f.startswith("OPS-SAT_Channel")]
 
 dfs = []

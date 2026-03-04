@@ -1,95 +1,146 @@
 "use client";
-import Link from 'next/link';
-import { useState } from "react";
+
+import Link from "next/link";
+import { useState, useEffect } from "react";
 import { supabase } from "@backend/SupabaseClient";
 
-type FormFields = {
-  [key: string]: string; 
+type FormFields = Record<string, string>;
+
+type PredictionResponse = {
+  prediction: "Healthy" | "Critical";
+  probability_critical: number;
+  confidence: number;
+  threshold_used: number;
 };
 
-const featureOrder = [
-  "duration",
-  "length",
-  "mean",
-  "variance",
-  "std",
-  "kurtosis",
-  "skew",
-  "n_peaks",
-  "smooth10_n_peaks",
-  "smooth20_n_peaks",
-  "diff_peaks",
-  "diff2_peaks",
-  "diff_var",
-  "diff2_var",
-  "gaps_squared",
-  "len_weighted",
-  "var_div_duration",
-  "var_div_len",
-  "sma",
-  "ema",
-  "energy",
-  "crest_factor",
-  "impulse_factor"
-];
-
-const initialFormData: FormFields = Object.fromEntries(
-  featureOrder.map((key) => [key, ""])
-) as FormFields;
-
-const formatLabel = (key: string) =>
-  key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-
 export default function Predict() {
-  const [formData, setFormData] = useState<FormFields>(initialFormData);
-  const [prediction, setPrediction] = useState<string>("");
+  const [featureOrder, setFeatureOrder] = useState<string[]>([]);
+  const [formData, setFormData] = useState<FormFields>({});
+  const [result, setResult] = useState<PredictionResponse | null>(null);
+
+  // Fetch feature order from backend
+  useEffect(() => {
+    const fetchFeatures = async () => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/feature-order`
+      );
+
+      const data: { feature_order: string[] } = await res.json();
+
+      setFeatureOrder(data.feature_order);
+
+      const initialData: FormFields = {};
+      data.feature_order.forEach((key) => {
+        initialData[key] = "";
+      });
+
+      setFormData(initialData);
+    };
+
+    fetchFeatures();
+  }, []);
+
+  const formatLabel = (key: string) =>
+    key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value, 
+      [name]: value,
     }));
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
 
   try {
-    const inputArray = featureOrder.map(
-      (key) => formData[key as keyof FormFields]
-    );
-    const features = Object.fromEntries(
+    // =========================
+    // 1️⃣ Convert form inputs to numbers
+    // =========================
+    const numericFeatures = Object.fromEntries(
       Object.entries(formData).map(([k, v]) => [k, parseFloat(v)])
     );
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/predict`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ features: inputArray }),
-      }
+    // =========================
+    // 2️⃣ Map ML features → Supabase column names
+    // =========================
+    const featureToColumnMap: Record<string, string> = {
+      len: "length",
+      var: "variance",
+      duration: "duration",
+      mean: "mean",
+      std: "std",
+      kurtosis: "kurtosis",
+      skew: "skew",
+      n_peaks: "n_peaks",
+      smooth10_n_peaks: "smooth10_n_peaks",
+      smooth20_n_peaks: "smooth20_n_peaks",
+      diff_peaks: "diff_peaks",
+      diff2_peaks: "diff2_peaks",
+      diff_var: "diff_var",
+      diff2_var: "diff2_var",
+      gaps_squared: "gaps_squared",
+      len_weighted: "len_weighted",
+      var_div_duration: "var_div_duration",
+      var_div_len: "var_div_len",
+    };
+
+    const supabaseData = Object.fromEntries(
+      Object.entries(numericFeatures).map(([mlKey, value]) => [
+        featureToColumnMap[mlKey] ?? mlKey,
+        value,
+      ])
     );
-    const data = await response.json();
-    setPrediction(data.prediction);
-    const { error } = await supabase.from("health_readings").insert([
-      {
-        ...features,
-        prediction: data.prediction,
-      },
-    ]);
-    if (error) {
-      console.error("❌ Supabase insert failed:", error.message);
-    } else {
-      console.log("✅ Supabase insert successful");
-    }
-  } catch (err) {
-    console.error("❌ Prediction request failed:", err);
+
+    // =========================
+    // 3️⃣ Call ML API
+    // =========================
+    const inputArray: number[] = featureOrder.map(
+      (key) => parseFloat(formData[key] ?? "0")
+    );
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ features: inputArray }),
+    });
+
+    const data: PredictionResponse = await response.json();
+    setResult(data);
+
+    // =========================
+    // 4️⃣ Normalize prediction to match Supabase CHECK constraint
+    // =========================
+    const normalizePrediction = (pred: string) => {
+  switch (pred.toLowerCase().trim()) {
+    case "healthy": return "Normal";
+    case "moderate": return "Warning";
+    case "critical": return "Critical";
+    default: return "Normal";
   }
 };
 
+    const finalPrediction = normalizePrediction(data.prediction);
 
+    // =========================
+    // 5️⃣ Insert into Supabase
+    // Only include columns that exist in your table
+    // =========================
+    const { error } = await supabase.from("health_readings").insert([
+      {
+        ...supabaseData,
+        prediction: finalPrediction,
+        confidence: data.confidence,
+        // probability_critical is omitted since your table doesn't have it
+      },
+    ]);
+
+    if (error) console.error("❌ Supabase insert failed:", error.message);
+  } catch (err) {
+    console.error("❌ Prediction failed:", err);
+  }
+};
   return (
     <main className="min-h-screen bg-[#111827] text-white p-6 md:p-12 w-full">
       <h1 className="text-3xl font-bold mb-8 text-center text-cyan-400">
@@ -101,54 +152,62 @@ export default function Predict() {
           NovaVitals
         </div>
         <div className="flex gap-4">
-          <Link href="/" className="hover:underline">Home</Link>
-          <Link href="/predict" className="hover:underline">Predict</Link>
-          <Link href="/history" className='hover:underline'>History</Link>
+          <Link href="/">Home</Link>
+          <Link href="/predict">Predict</Link>
+          <Link href="/history">History</Link>
         </div>
       </nav>
 
-      <form onSubmit={handleSubmit} className="space-y-12">
-        <div className="space-y-8">
-          <h2 className="text-2xl font-semibold text-cyan-400 flex items-center gap-3 pb-4 border-b border-cyan-400/30">
-            <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-sm">📊</div>
-            Statistical Parameters
-          </h2>
-
+      {featureOrder.length > 0 && (
+        <form onSubmit={handleSubmit} className="space-y-12 mt-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {featureOrder.map((key) => (
-              <div key={key} className="group">
-                <label htmlFor={key} className="block text-sm font-medium mb-2 text-gray-200">
+              <div key={key}>
+                <label className="block text-sm font-medium mb-2">
                   {formatLabel(key)}
                 </label>
                 <input
                   type="number"
-                  id={key}
                   name={key}
-                  value={formData[key as keyof FormFields] ?? ""}
+                  value={formData[key] ?? ""}
                   onChange={handleChange}
                   step="any"
-                  placeholder={`Enter ${formatLabel(key).toLowerCase()}`}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 backdrop-blur-sm transition-all focus:outline-none focus:border-cyan-400 focus:shadow-lg focus:shadow-cyan-400/20 focus:-translate-y-0.5 group-hover:border-white/30"
                   required
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl"
                 />
               </div>
             ))}
           </div>
-        </div>
-        <div className="flex justify-center">
-          <button
-            type="submit"
-            className="mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg text-white font-semibold hover:scale-105 transition-transform"
-          >
-            Run Prediction
-          </button>
-        </div>
-      </form>
 
-      {prediction && (
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              className="mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg"
+            >
+              Run Prediction
+            </button>
+          </div>
+        </form>
+      )}
+
+      {result && (
         <div className="mt-12 text-center">
-          <h2 className="text-xl font-bold text-green-400">Prediction Result:</h2>
-          <p className="mt-2 text-lg">{prediction}</p>
+          <h2 className="text-xl font-bold text-green-400">
+            Prediction Result
+          </h2>
+
+          <p className="mt-4 text-2xl font-bold">
+            {result.prediction}
+          </p>
+
+          <p className="mt-2">
+            Probability (Critical):{" "}
+            {(result.probability_critical * 100).toFixed(2)}%
+          </p>
+
+          <p className="text-gray-400 mt-1">
+            Confidence: {(result.confidence * 100).toFixed(2)}%
+          </p>
         </div>
       )}
     </main>
