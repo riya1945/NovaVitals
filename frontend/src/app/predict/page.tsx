@@ -40,8 +40,9 @@ export default function Predict() {
     fetchFeatures();
   }, []);
 
-  const formatLabel = (key: string) =>
-    key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  const formatLabel = (key: string) => {
+  return featureLabels[key] || key;
+};
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -141,6 +142,35 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     console.error("❌ Prediction failed:", err);
   }
 };
+const featureLabels: Record<string, string> = {
+  duration: "Signal Duration",
+  len: "Signal Length",
+  length: "Signal Length",
+
+  mean: "Average Signal Value",
+  variance: "Signal Variability",
+  var: "Signal Variability",
+
+  std: "Signal Standard Deviation",
+  kurtosis: "Signal Tail Distribution",
+  skew: "Signal Asymmetry",
+
+  n_peaks: "Peak Count",
+  smooth10_n_peaks: "Short Window Peak Activity",
+  smooth20_n_peaks: "Long Window Peak Activity",
+
+  diff_peaks: "Signal Change Peaks",
+  diff2_peaks: "Acceleration Peaks",
+
+  diff_var: "Signal Change Variability",
+  diff2_var: "Signal Acceleration Variability",
+
+  gaps_squared: "Peak Gap Energy",
+  len_weighted: "Length Weighted Variance",
+
+  var_div_duration: "Variance per Duration",
+  var_div_len: "Variance per Length",
+};
   return (
     <main className="min-h-screen bg-[#111827] text-white p-6 md:p-12 w-full">
       <h1 className="text-3xl font-bold mb-8 text-center text-cyan-400">
@@ -175,6 +205,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   required
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl"
                 />
+                
               </div>
             ))}
           </div>

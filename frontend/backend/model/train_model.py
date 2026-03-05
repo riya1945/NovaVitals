@@ -39,7 +39,7 @@ selected_features = [
 ]
 
 df = df[["segment"] + selected_features + ["status"]]
-
+ 
 X = df[selected_features]
 y = df["status"]
 groups = df["segment"]
