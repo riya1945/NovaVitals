@@ -4,6 +4,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from model.explain import explain_prediction
 
 # =============================
 # App Setup
@@ -50,23 +51,55 @@ def predict(data: InputData):
 
     input_df = pd.DataFrame([data.features], columns=feature_columns)
 
-    # Probability for class 1 (Critical)
+    # =============================
+    # Model Prediction
+    # =============================
     prob_critical = model.predict_proba(input_df)[0][1]
 
-    # Apply tuned threshold
-    prediction = 1 if prob_critical >= threshold else 0
+    prediction_num = 1 if prob_critical >= threshold else 0
 
     label_map = {
         0: "Healthy",
         1: "Critical"
     }
 
+    prediction_label = label_map[prediction_num]
+
+    # =============================
+    # Confidence Score
+    # =============================
+    confidence = max(prob_critical, 1 - prob_critical)
+
+    # =============================
+    # SHAP Explainability
+    # =============================
+    exp = explain_prediction(data.features)
+
+    # =============================
+    # Alert Logic
+    # =============================
+    alert = False
+    severity = "Normal"
+
+    if prob_critical > 0.8:
+        alert = True
+        severity = "Critical"
+    elif prob_critical > 0.5:
+        severity = "Warning"
+
+    # =============================
+    # Response
+    # =============================
     return {
-        "prediction": label_map[prediction],
-        "probability_critical": float(prob_critical),
-        "confidence": float(max(prob_critical, 1 - prob_critical)),
-        "threshold_used": float(threshold)
-    }
+    "prediction": prediction_label,
+    "probability_critical": float(prob_critical),
+    "confidence": float(confidence),
+    "threshold_used": float(threshold),
+    "alert": alert,
+    "severity": severity,
+    "explanation": exp["explanation"],
+    "plot": exp["plot"]
+}
 
 # =============================
 # CORS

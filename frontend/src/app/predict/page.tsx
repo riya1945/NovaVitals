@@ -5,12 +5,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@backend/SupabaseClient";
 
 type FormFields = Record<string, string>;
-
 type PredictionResponse = {
   prediction: "Healthy" | "Critical";
   probability_critical: number;
   confidence: number;
   threshold_used: number;
+
+  explanation: [string, number][];
+  plot?: string; // SHAP waterfall image
 };
 
 export default function Predict() {
@@ -54,18 +56,14 @@ export default function Predict() {
   };
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
+  
 
   try {
-    // =========================
-    // 1️⃣ Convert form inputs to numbers
-    // =========================
+ 
     const numericFeatures = Object.fromEntries(
       Object.entries(formData).map(([k, v]) => [k, parseFloat(v)])
     );
 
-    // =========================
-    // 2️⃣ Map ML features → Supabase column names
-    // =========================
     const featureToColumnMap: Record<string, string> = {
       len: "length",
       var: "variance",
@@ -124,10 +122,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
     const finalPrediction = normalizePrediction(data.prediction);
 
-    // =========================
-    // 5️⃣ Insert into Supabase
-    // Only include columns that exist in your table
-    // =========================
+
     const { error } = await supabase.from("health_readings").insert([
       {
         ...supabaseData,
@@ -142,6 +137,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     console.error("❌ Prediction failed:", err);
   }
 };
+
 const featureLabels: Record<string, string> = {
   duration: "Signal Duration",
   len: "Signal Length",
@@ -220,27 +216,55 @@ const featureLabels: Record<string, string> = {
           </div>
         </form>
       )}
-
       {result && (
-        <div className="mt-12 text-center">
-          <h2 className="text-xl font-bold text-green-400">
-            Prediction Result
-          </h2>
+  <>
+    <div className="mt-12 text-center">
+      <h2 className="text-xl font-bold text-green-400">
+        Prediction Result
+      </h2>
 
-          <p className="mt-4 text-2xl font-bold">
-            {result.prediction}
-          </p>
+      <p className="mt-4 text-2xl font-bold">
+        {result.prediction}
+      </p>
 
-          <p className="mt-2">
-            Probability (Critical):{" "}
-            {(result.probability_critical * 100).toFixed(2)}%
-          </p>
+      <p className="mt-2">
+        Probability (Critical):{" "}
+        {(result.probability_critical * 100).toFixed(2)}%
+      </p>
 
-          <p className="text-gray-400 mt-1">
-            Confidence: {(result.confidence * 100).toFixed(2)}%
-          </p>
-        </div>
-      )}
+      <p className="text-gray-400 mt-1">
+        Confidence: {(result.confidence * 100).toFixed(2)}%
+      </p>
+    </div>
+
+    {Array.isArray(result.explanation) && (
+  <div className="mt-6 text-left max-w-md mx-auto">
+    <h3 className="text-lg font-semibold text-cyan-400 mb-2">
+      Key Factors Influencing Prediction
+    </h3>
+
+    {result.explanation.map(([feature, value], i) => (
+      <p key={i} className="text-gray-300">
+        {formatLabel(feature)} : {value.toFixed(3)}
+      </p>
+    ))}
+  </div>
+)}
+
+    {result.plot && (
+      <div className="mt-10 flex flex-col items-center">
+        <h3 className="text-lg font-semibold text-cyan-400 mb-4">
+          SHAP Model Explanation
+        </h3>
+
+       <img src={`data:image/png;base64,${result.plot}`} 
+          alt="SHAP Waterfall Plot"
+          className="rounded-lg shadow-xl border border-white/10"
+        />
+      </div>
+    )}
+  </>
+)}
     </main>
   );
 }

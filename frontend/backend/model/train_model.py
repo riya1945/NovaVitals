@@ -2,6 +2,8 @@ import pandas as pd
 import os
 import numpy as np
 import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import (
@@ -101,6 +103,17 @@ print("Train segments:", train_segments.nunique())
 print("Test segments:", test_segments.nunique())
 print("Segment overlap:", set(train_segments) & set(test_segments))
 
+confidence_scores = clf.predict_proba(X_test)[:,1]
+
+plt.figure(figsize=(8,5))
+sns.histplot(confidence_scores, bins=30, kde=True)
+
+plt.title("Prediction Confidence Distribution")
+plt.xlabel("Probability of Critical")
+plt.ylabel("Frequency")
+
+plt.savefig("model/confidence_distribution.png")
+plt.show()
 
 # =========================
 # TRAIN FINAL MODEL
@@ -152,9 +165,7 @@ macro_f1 = f1_score(y_test, y_pred_final, average="macro")
 print("Final Macro F1 Score:", macro_f1)
 
 
-# =========================
-# FEATURE IMPORTANCE
-# =========================
+
 importances = pd.Series(
     clf.feature_importances_,
     index=selected_features
@@ -164,9 +175,6 @@ print("\nTop 10 Important Features:")
 print(importances.head(10))
 
 
-# =========================
-# SAVE MODEL + METADATA
-# =========================
 os.makedirs("model", exist_ok=True)
 
 joblib.dump(clf, "model/model.pkl")
